@@ -1,0 +1,494 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smilevee AI Trading Bot</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#080d19;color:white;font-family:Arial,sans-serif}
+header{padding:20px;background:#101a2d;border-bottom:1px solid #263750}
+.brand{font-size:23px;font-weight:bold;color:#e8bd52}
+.container{max-width:900px;margin:auto;padding:18px}
+.card{background:#111c30;border:1px solid #263750;border-radius:14px;padding:18px;margin:16px 0}
+h2{font-size:20px;margin-top:0}
+input{width:100%;padding:14px;margin:8px 0;background:#081222;color:white;border:1px solid #34445e;border-radius:8px}
+button{padding:13px 16px;border:0;border-radius:8px;font-weight:bold;cursor:pointer}
+.primary{background:#d9ae45;color:#111}
+.secondary{background:#263750;color:white}
+.danger{background:#c03939;color:white}
+.success{color:#45d483}
+.muted{color:#9aabc3;font-size:13px;line-height:1.5}
+.balance{font-size:30px;color:#e8bd52;font-weight:bold}
+.coin{display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #263750}
+.hidden{display:none!important}
+button:disabled{opacity:.5;cursor:not-allowed}
+.status{padding:12px;background:#0b2630;border-radius:8px;margin:10px 0}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.full{width:100%;margin-top:10px}
+.link{text-align:center;margin-top:16px}
+.link a{color:#e8bd52;text-decoration:none}
+.password-wrap{position:relative}
+.password-wrap input{padding-right:75px}
+.show-btn{position:absolute;right:8px;top:16px;background:transparent;color:#e8bd52;padding:7px}
+@media(max-width:550px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+
+<body>
+
+<header>
+  <div class="brand">SMILEVEE AI</div>
+  <div class="muted">Intelligent Crypto Trading Platform</div>
+</header>
+
+<div class="container">
+
+<!-- REGISTER -->
+<section id="registerPage" class="card">
+  <h2>Create Your Account</h2>
+  <p class="muted">Join Smilevee AI Trading Bot.</p>
+
+  <input id="regName" placeholder="Full name">
+  <input id="regEmail" type="email" placeholder="Email address">
+
+  <div class="password-wrap">
+    <input id="regPassword" type="password" placeholder="Create password">
+    <button class="show-btn" type="button" onclick="togglePassword('regPassword',this)">Show</button>
+  </div>
+
+  <div class="password-wrap">
+    <input id="confirmPassword" type="password" placeholder="Confirm password">
+    <button class="show-btn" type="button" onclick="togglePassword('confirmPassword',this)">Show</button>
+  </div>
+
+  <p class="muted">Password must contain at least 8 characters.</p>
+
+  <button class="primary full" onclick="signup()">Create Account</button>
+  <p id="registerMessage" class="muted"></p>
+
+  <p class="link">
+    Already have an account?
+    <a href="#" onclick="showPage('loginPage');return false;">Login</a>
+  </p>
+</section>
+
+<!-- LOGIN -->
+<section id="loginPage" class="card hidden">
+  <h2>Welcome Back</h2>
+  <p class="muted">Login to your Smilevee account.</p>
+
+  <input id="loginEmail" type="email" placeholder="Email address">
+
+  <div class="password-wrap">
+    <input id="loginPassword" type="password" placeholder="Password">
+    <button class="show-btn" type="button" onclick="togglePassword('loginPassword',this)">Show</button>
+  </div>
+
+  <button class="primary full" onclick="login()">Login</button>
+  <p id="loginMessage" class="muted"></p>
+
+  <p class="link">
+    <a href="#" onclick="showPage('forgotPage');return false;">Forgot Password?</a>
+  </p>
+
+  <p class="link">
+    Don't have an account?
+    <a href="#" onclick="showPage('registerPage');return false;">Create Account</a>
+  </p>
+</section>
+
+<!-- FORGOT PASSWORD -->
+<section id="forgotPage" class="card hidden">
+  <h2>Forgot Password?</h2>
+  <p class="muted">Enter your registered email address. We'll send you a password reset link.</p>
+
+  <input id="forgotEmail" type="email" placeholder="Your email address">
+
+  <button class="primary full" onclick="forgotPassword()">Send Reset Link</button>
+
+  <p id="forgotMessage" class="muted"></p>
+
+  <p class="link">
+    <a href="#" onclick="showPage('loginPage');return false;">Back to Login</a>
+  </p>
+</section>
+
+<!-- NEW PASSWORD -->
+<section id="updatePage" class="card hidden">
+  <h2>Create New Password</h2>
+  <p class="muted">Choose a new password for your account.</p>
+
+  <div class="password-wrap">
+    <input id="newPassword" type="password" placeholder="New password">
+    <button class="show-btn" type="button" onclick="togglePassword('newPassword',this)">Show</button>
+  </div>
+
+  <div class="password-wrap">
+    <input id="newConfirmPassword" type="password" placeholder="Confirm new password">
+    <button class="show-btn" type="button" onclick="togglePassword('newConfirmPassword',this)">Show</button>
+  </div>
+
+  <button class="primary full" onclick="updatePassword()">Save New Password</button>
+  <p id="updateMessage" class="muted"></p>
+</section>
+
+<!-- DASHBOARD -->
+<section id="dashboard" class="hidden">
+
+  <div class="card">
+    <h2>Welcome to your Dashboard</h2>
+    <p class="muted" id="userEmail"></p>
+    <button class="secondary" onclick="logout()">Logout</button>
+  </div>
+
+  <!-- BYBIT -->
+  <div class="card">
+    <h2>Bybit API Connection</h2>
+
+    <div id="connectionStatus" class="status">
+      <span class="muted">Bybit account not connected</span>
+    </div>
+
+    <p class="muted">Connect your Bybit account using your API credentials. Your secret is sent to the secure backend for encryption.</p>
+
+    <input id="apiKey" placeholder="Bybit API Key">
+    <input id="apiSecret" type="password" placeholder="Bybit API Secret">
+
+    <button class="primary full" onclick="connectBybit()">Connect Bybit Account</button>
+    <p id="connectMessage" class="muted"></p>
+  </div>
+
+  <!-- BALANCE -->
+  <div class="card">
+    <h2>My Bybit Balance</h2>
+    <p class="muted">Total account equity</p>
+
+    <div class="balance" id="totalBalance">--</div>
+
+    <div id="coinBalances">
+      <p class="muted">Connect Bybit to load your real balance.</p>
+    </div>
+
+    <button class="secondary full" onclick="loadBalance()">Refresh Balance</button>
+    <p id="balanceMessage" class="muted"></p>
+  </div>
+
+  <!-- BOT -->
+  <div class="card">
+    <h2>Smilevee AI Trading Bot</h2>
+
+    <div id="botStatus" class="status">Bot is stopped</div>
+
+    <p class="muted">Set your trading amount and profit target before starting the bot.</p>
+
+    <label>Maximum trading amount (USDT)</label>
+    <input id="maxAmount" type="number" min="1" placeholder="Example: 20">
+
+    <label>Profit target (USDT)</label>
+    <input id="profitTarget" type="number" min="0.01" step="0.01" placeholder="Example: 5">
+
+    <p class="muted">Trading pairs: BTC/USDT · ETH/USDT · SOL/USDT</p>
+
+    <div class="grid">
+      <button class="primary" id="startButton" onclick="startBot()">Start Bot</button>
+      <button class="danger" id="stopButton" onclick="stopBot()" disabled>Stop Bot</button>
+    </div>
+
+    <p id="botMessage" class="muted"></p>
+  </div>
+
+</section>
+</div>
+
+<script>
+const SUPABASE_URL="https://xrzrnpdsgukypzsnrvjg.supabase.co";
+const SUPABASE_KEY="sb_publishable_ntILX5DCmd4x_0XIl5CepQ_YW1vzeYz";
+
+const supabaseClient=window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_KEY
+);
+
+let currentSession=null;
+let recoveryMode=false;
+
+function message(id,text){
+  document.getElementById(id).textContent=text;
+}
+
+function showPage(page){
+  ["registerPage","loginPage","forgotPage","updatePage","dashboard"].forEach(id=>{
+    document.getElementById(id).classList.add("hidden");
+  });
+  document.getElementById(page).classList.remove("hidden");
+}
+
+function togglePassword(id,button){
+  const input=document.getElementById(id);
+  if(input.type==="password"){
+    input.type="text";
+    button.textContent="Hide";
+  }else{
+    input.type="password";
+    button.textContent="Show";
+  }
+}
+
+async function signup(){
+  const name=document.getElementById("regName").value.trim();
+  const email=document.getElementById("regEmail").value.trim();
+  const password=document.getElementById("regPassword").value;
+  const confirm=document.getElementById("confirmPassword").value;
+
+  if(!name||!email||!password||!confirm)
+    return message("registerMessage","Please fill in all fields.");
+
+  if(password.length<8)
+    return message("registerMessage","Password must be at least 8 characters.");
+
+  if(password!==confirm)
+    return message("registerMessage","Passwords do not match.");
+
+  message("registerMessage","Creating your account...");
+
+  const {data,error}=await supabaseClient.auth.signUp({
+    email,
+    password,
+    options:{data:{full_name:name}}
+  });
+
+  if(error)return message("registerMessage",error.message);
+
+  if(data.session){
+    currentSession=data.session;
+    showDashboard();
+  }else{
+    message("registerMessage","Account created! Check your email to confirm your account, then log in.");
+  }
+}
+
+async function login(){
+  const email=document.getElementById("loginEmail").value.trim();
+  const password=document.getElementById("loginPassword").value;
+
+  if(!email||!password)
+    return message("loginMessage","Enter your email and password.");
+
+  message("loginMessage","Logging in...");
+
+  const {data,error}=await supabaseClient.auth.signInWithPassword({
+    email,password
+  });
+
+  if(error)return message("loginMessage",error.message);
+
+  currentSession=data.session;
+  showDashboard();
+}
+
+async function forgotPassword(){
+  const email=document.getElementById("forgotEmail").value.trim();
+
+  if(!email)return message("forgotMessage","Enter your email address.");
+
+  message("forgotMessage","Sending reset link...");
+
+  const {error}=await supabaseClient.auth.resetPasswordForEmail(email,{
+    redirectTo:window.location.origin
+  });
+
+  if(error)return message("forgotMessage",error.message);
+
+  message("forgotMessage","If an account exists with this email, a reset link has been sent. Check your inbox and spam folder.");
+}
+
+async function updatePassword(){
+  const password=document.getElementById("newPassword").value;
+  const confirm=document.getElementById("newConfirmPassword").value;
+
+  if(password.length<8)
+    return message("updateMessage","Password must be at least 8 characters.");
+
+  if(password!==confirm)
+    return message("updateMessage","Passwords do not match.");
+
+  const {error}=await supabaseClient.auth.updateUser({password});
+
+  if(error)return message("updateMessage",error.message);
+
+  message("updateMessage","Password updated successfully. Please log in with your new password.");
+
+  await supabaseClient.auth.signOut();
+  currentSession=null;
+  recoveryMode=false;
+  showPage("loginPage");
+}
+
+async function logout(){
+  await supabaseClient.auth.signOut();
+  currentSession=null;
+  showPage("loginPage");
+}
+
+function showDashboard(){
+  showPage("dashboard");
+  document.getElementById("userEmail").textContent=currentSession?.user?.email||"";
+  loadBalance();
+}
+
+async function apiRequest(path,method="GET",body=null){
+  const {data}=await supabaseClient.auth.getSession();
+  const session=data.session;
+
+  if(!session)throw new Error("Please log in again.");
+
+  const response=await fetch(path,{
+    method,
+    headers:{
+      "Content-Type":"application/json",
+      "Authorization":"Bearer "+session.access_token
+    },
+    body:body?JSON.stringify(body):undefined
+  });
+
+  const result=await response.json();
+
+  if(!response.ok){
+    throw new Error(result.error||result.message||"Request failed.");
+  }
+
+  return result;
+}
+
+async function connectBybit(){
+  const apiKey=document.getElementById("apiKey").value.trim();
+  const apiSecret=document.getElementById("apiSecret").value.trim();
+
+  if(!apiKey||!apiSecret)
+    return message("connectMessage","Enter both API key and API secret.");
+
+  message("connectMessage","Verifying your Bybit account...");
+
+  try{
+    await apiRequest("/api/bybit/connect","POST",{apiKey,apiSecret});
+
+    document.getElementById("apiKey").value="";
+    document.getElementById("apiSecret").value="";
+
+    document.getElementById("connectionStatus").innerHTML=
+      '<span class="success">✓ Bybit account connected</span>';
+
+    message("connectMessage","Connection successful.");
+    await loadBalance();
+  }catch(error){
+    message("connectMessage",error.message);
+  }
+}
+
+async function loadBalance(){
+  message("balanceMessage","Loading your Bybit balance...");
+
+  try{
+    const data=await apiRequest("/api/bybit/balance");
+
+    document.getElementById("totalBalance").textContent=
+      "$"+Number(data.totalEquity||0).toFixed(2);
+
+    const coins=data.coins||data.balances||[];
+
+    if(!coins.length){
+      document.getElementById("coinBalances").innerHTML=
+        '<p class="muted">No coin balances returned.</p>';
+    }else{
+      document.getElementById("coinBalances").innerHTML=coins.map(coin=>{
+        const name=escapeHTML(coin.coin||coin.currency||"");
+        const amount=Number(coin.walletBalance??coin.balance??0);
+        return `<div class="coin"><strong>${name}</strong><span>${amount}</span></div>`;
+      }).join("");
+    }
+
+    document.getElementById("connectionStatus").innerHTML=
+      '<span class="success">✓ Bybit account connected</span>';
+
+    message("balanceMessage","Balance updated from Bybit.");
+  }catch(error){
+    message("balanceMessage",error.message);
+  }
+}
+
+function escapeHTML(value){
+  return String(value).replace(/[&<>"']/g,char=>({
+    "&":"&amp;","<":"&lt;",">":"&gt;",
+    '"':"&quot;","'":"&#39;"
+  })[char]);
+}
+
+async function startBot(){
+  const maxAmount=Number(document.getElementById("maxAmount").value);
+  const profitTarget=Number(document.getElementById("profitTarget").value);
+
+  if(maxAmount<=0||profitTarget<=0)
+    return message("botMessage","Enter a valid trading amount and profit target.");
+
+  if(!confirm("Live trading involves risk and you can lose money. Continue?"))return;
+
+  message("botMessage","Requesting bot start...");
+
+  try{
+    await apiRequest("/api/bot/start","POST",{maxAmount,profitTarget});
+
+    document.getElementById("botStatus").innerHTML=
+      '<span class="success">Bot running</span>';
+
+    document.getElementById("startButton").disabled=true;
+    document.getElementById("stopButton").disabled=false;
+
+    message("botMessage","Bot start request accepted.");
+  }catch(error){
+    message("botMessage",error.message);
+  }
+}
+
+async function stopBot(){
+  message("botMessage","Requesting bot stop...");
+
+  try{
+    await apiRequest("/api/bot/stop","POST",{});
+
+    document.getElementById("botStatus").textContent="Bot stopped";
+    document.getElementById("startButton").disabled=false;
+    document.getElementById("stopButton").disabled=true;
+
+    message("botMessage","Bot stop request accepted.");
+  }catch(error){
+    message("botMessage",error.message);
+  }
+}
+
+supabaseClient.auth.onAuthStateChange((event,session)=>{
+  currentSession=session;
+
+  if(event==="PASSWORD_RECOVERY"){
+    recoveryMode=true;
+    showPage("updatePage");
+  }else if(event==="SIGNED_OUT"){
+    recoveryMode=false;
+    showPage("loginPage");
+  }else if(session&&!recoveryMode){
+    showDashboard();
+  }
+});
+
+supabaseClient.auth.getSession().then(({data})=>{
+  currentSession=data.session;
+  if(currentSession)showDashboard();
+  else showPage("registerPage");
+});
+</script>
+
+</body>
+</html>
